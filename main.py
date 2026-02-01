@@ -103,27 +103,6 @@ class FeatureFactor(BaseModel):
 
 
 class SalesPredictionResponse(BaseModel):
-    model_config = ConfigDict(
-        json_schema_extra={
-            "examples": [
-                {
-                    "prediction": {
-                        "predicted_sales": 320.5,
-                        "confidence_lower": 280.1,
-                        "confidence_upper": 360.9,
-                        "std_dev": 20.2,
-                    },
-                    "top_factors": [
-                        {"feature": "price", "importance": 0.31, "rank": 1},
-                        {"feature": "footfall", "importance": 0.22, "rank": 2},
-                        {"feature": "discount", "importance": 0.12, "rank": 3},
-                    ],
-                    "interpretation": "Expected to sell 320.5 units",
-                }
-            ]
-        }
-    )
-
     prediction: PredictionResult
     top_factors: List[FeatureFactor]
     interpretation: str
@@ -136,26 +115,6 @@ class PriceCurvePoint(BaseModel):
 
 
 class PricingOptimizationResponse(BaseModel):
-    model_config = ConfigDict(
-        json_schema_extra={
-            "examples": [
-                {
-                    "optimal_price": 104.0,
-                    "expected_sales": 310.0,
-                    "expected_revenue": 32240.0,
-                    "analysis": "Best price is $104.0 for $32240.0 revenue",
-                    "price_curve": [
-                        {"price": 80.0, "predicted_sales": 380.0, "revenue": 30400.0},
-                        {"price": 90.0, "predicted_sales": 350.0, "revenue": 31500.0},
-                        {"price": 100.0, "predicted_sales": 320.0, "revenue": 32000.0},
-                        {"price": 110.0, "predicted_sales": 290.0, "revenue": 31900.0},
-                        {"price": 120.0, "predicted_sales": 260.0, "revenue": 31200.0},
-                    ],
-                }
-            ]
-        }
-    )
-
     optimal_price: float
     expected_sales: float
     expected_revenue: float
@@ -164,12 +123,6 @@ class PricingOptimizationResponse(BaseModel):
 
 
 class HealthResponse(BaseModel):
-    model_config = ConfigDict(
-        json_schema_extra={
-            "examples": [{"status": "healthy", "model_loaded": True}]
-        }
-    )
-
     status: str
     model_loaded: bool
 
@@ -190,7 +143,7 @@ def _ensure_model_loaded():
         raise HTTPException(
             status_code=503,
             detail=(
-                "Model not loaded. Provide retail_sales.csv (or Retail_Sales.csv) and restart, "
+                "Model not loaded. Provide retail_sales.csv and restart, "
                 "or include a pre-trained sales_model.joblib."
             ),
         )
@@ -210,16 +163,14 @@ async def startup_event():
     dataset_path = _first_existing_path(
         [
             "retail_sales.csv",
-            "Retail_Sales.csv",
             os.path.join("data", "retail_sales.csv"),
-            os.path.join("data", "Retail_Sales.csv"),
         ]
     )
 
     if dataset_path is None:
         print("⚠️  Warning: dataset not found!")
         print("Please download dataset from Kaggle and place it in the project folder")
-        print("Expected filename: retail_sales.csv (or Retail_Sales.csv)")
+        print("Expected filename: retail_sales.csv")
         return
 
     try:
@@ -252,7 +203,7 @@ async def health() -> HealthResponse:
     return HealthResponse(status="healthy", model_loaded=predictor.model is not None)
 
 
-# Step 3: Force correct Swagger response example at endpoint level
+# Force correct Swagger response example at endpoint level
 @app.post(
     "/api/predict",
     response_model=SalesPredictionResponse,
@@ -285,11 +236,6 @@ async def predict_sales(
 ) -> SalesPredictionResponse:
     """
     Predict sales using ML model.
-
-    Returns:
-    - predicted sales
-    - confidence interval
-    - top features affecting prediction
     """
     _ensure_model_loaded()
 
@@ -307,7 +253,7 @@ async def predict_sales(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Step 3: Force correct Swagger response example at endpoint level
+# Force correct Swagger response example at endpoint level
 @app.post(
     "/api/optimize",
     response_model=PricingOptimizationResponse,
@@ -388,9 +334,7 @@ async def get_statistics():
         dataset_path = _first_existing_path(
             [
                 "retail_sales.csv",
-                "Retail_Sales.csv",
                 os.path.join("data", "retail_sales.csv"),
-                os.path.join("data", "Retail_Sales.csv"),
             ]
         )
         if dataset_path is None:
