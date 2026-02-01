@@ -1,80 +1,31 @@
-# Retail Sales Analytics API
+# Retail Store Analytics API
 
-Simple ML-powered API for sales prediction and pricing optimization.
+Predict customer footfall and optimize pricing strategies using machine learning.
 
-## Features
-- 🎯 Sales prediction using Random Forest
-- 💰 Pricing optimization for maximum revenue
-- 📊 Statistical analysis
-- ✅ Input validation
-- 🧪 Unit tests
+## 🎯 What This API Does
 
-## Setup (3 Steps)
+Since the dataset has no "sales" column, we predict **footfall** (customer visits) instead:
 
-### 1. Install Python 3.11+
-Download from https://python.org
+**OUTPUT 1:** Predict how many customers will visit based on:
+- Price, discounts, promotions
+- Weather conditions
+- Customer sentiment
+- Competition
 
-### 2. Install dependencies
+**OUTPUT 2:** Find the optimal price that maximizes customer footfall
+
+## 🚀 Quick Start
+
+1. **Download dataset** from Kaggle and save as `retail_sales.csv`
+
+2. **Install dependencies:**
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Add dataset
-Download from Kaggle and save as `retail_sales.csv` in project folder
-
-## Run
+3. **Run API:**
 ```bash
 uvicorn main:app --reload
 ```
 
-Open: http://localhost:8000/docs
-
-## Test
-```bash
-pytest test_api.py -v
-```
-
-## API Endpoints
-
-- `POST /api/predict` - Predict sales
-- `POST /api/optimize` - Find optimal price
-- `GET /api/stats` - Dataset statistics
-- `GET /api/model/info` - ML model details
-
-## Example Usage
-
-### Predict Sales
-```bash
-curl -X POST "http://localhost:8000/api/predict" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "price": 100,
-    "discount": 0.15,
-    "promotion_intensity": 7,
-    "footfall": 500,
-    "ad_spend": 1000,
-    "competitor_price": 105,
-    "stock_level": 200,
-    "weather_index": 8,
-    "customer_sentiment": 7.5,
-    "return_rate": 0.05
-  }'
-```
-
-### Optimize Pricing
-```bash
-curl -X POST "http://localhost:8000/api/optimize" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "min_price": 80,
-    "max_price": 120,
-    "footfall": 400
-  }'
-```
-
-## Tech Stack
-- FastAPI - REST API framework
-- Scikit-learn - Machine learning
-- Pandas - Data processing
-- Pydantic - Data validation
-- Pytest - Testing
+4. **Open browser:**
