@@ -122,16 +122,8 @@ class PricingOptimizationRequest(BaseModel):
 
 
 class HealthResponse(BaseModel):
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "status": "healthy",
-                "model_loaded": True,
-                "model_target": "footfall",
-            }
-        }
-    )
-
+    # IMPORTANT: no schema-level example here
+    # Keeping examples only at endpoint level prevents Swagger from reusing the health example elsewhere.
     status: str
     model_loaded: bool
     model_target: str
