@@ -149,6 +149,13 @@ def _ensure_model_loaded():
         )
 
 
+def _read_dataset_clean(dataset_path: str) -> pd.DataFrame:
+    df = pd.read_csv(dataset_path)
+    # Drop accidental index columns
+    df = df.loc[:, ~df.columns.astype(str).str.match(r"^Unnamed")]
+    return df
+
+
 # ----------------------------
 # Startup: load or train model
 # ----------------------------
@@ -203,7 +210,6 @@ async def health() -> HealthResponse:
     return HealthResponse(status="healthy", model_loaded=predictor.model is not None)
 
 
-# Force correct Swagger response example at endpoint level
 @app.post(
     "/api/predict",
     response_model=SalesPredictionResponse,
@@ -231,12 +237,7 @@ async def health() -> HealthResponse:
         }
     },
 )
-async def predict_sales(
-    request: SalesPredictionRequest = Body(...)
-) -> SalesPredictionResponse:
-    """
-    Predict sales using ML model.
-    """
+async def predict_sales(request: SalesPredictionRequest = Body(...)) -> SalesPredictionResponse:
     _ensure_model_loaded()
 
     try:
@@ -253,7 +254,6 @@ async def predict_sales(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Force correct Swagger response example at endpoint level
 @app.post(
     "/api/optimize",
     response_model=PricingOptimizationResponse,
@@ -280,12 +280,7 @@ async def predict_sales(
         }
     },
 )
-async def optimize_pricing(
-    request: PricingRequest = Body(...)
-) -> PricingOptimizationResponse:
-    """
-    Find optimal price for maximum revenue.
-    """
+async def optimize_pricing(request: PricingRequest = Body(...)) -> PricingOptimizationResponse:
     _ensure_model_loaded()
 
     try:
@@ -320,16 +315,12 @@ async def optimize_pricing(
             analysis=f"Best price is ${optimal['price']} for ${optimal['revenue']} revenue",
             price_curve=[PriceCurvePoint(**x) for x in results[::5]],
         )
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/stats")
 async def get_statistics():
-    """
-    Get basic dataset statistics and correlations.
-    """
     try:
         dataset_path = _first_existing_path(
             [
@@ -340,7 +331,7 @@ async def get_statistics():
         if dataset_path is None:
             raise FileNotFoundError("Dataset not found")
 
-        df = pd.read_csv(dataset_path)
+        df = _read_dataset_clean(dataset_path)
 
         if predictor.target_column and predictor.target_column in df.columns:
             target_col = predictor.target_column
@@ -377,14 +368,11 @@ async def get_statistics():
 
 @app.get("/api/model/info")
 async def model_info():
-    """
-    Get ML model information and feature importances.
-    """
     _ensure_model_loaded()
-
     return {
         "model_type": "Random Forest Regressor",
-        "n_estimators": 100,
+        "n_estimators": 200,
         "features": predictor.feature_names,
+        "target_column": predictor.target_column,
         "feature_importance": predictor.get_feature_importance(),
     }
