@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 from typing import List, Optional
 import pandas as pd
@@ -252,8 +252,37 @@ async def health() -> HealthResponse:
     return HealthResponse(status="healthy", model_loaded=predictor.model is not None)
 
 
-@app.post("/api/predict", response_model=SalesPredictionResponse)
-async def predict_sales(request: SalesPredictionRequest) -> SalesPredictionResponse:
+# Step 3: Force correct Swagger response example at endpoint level
+@app.post(
+    "/api/predict",
+    response_model=SalesPredictionResponse,
+    responses={
+        200: {
+            "description": "Successful Response",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "prediction": {
+                            "predicted_sales": 320.5,
+                            "confidence_lower": 280.1,
+                            "confidence_upper": 360.9,
+                            "std_dev": 20.2,
+                        },
+                        "top_factors": [
+                            {"feature": "price", "importance": 0.31, "rank": 1},
+                            {"feature": "footfall", "importance": 0.22, "rank": 2},
+                            {"feature": "discount", "importance": 0.12, "rank": 3},
+                        ],
+                        "interpretation": "Expected to sell 320.5 units",
+                    }
+                }
+            },
+        }
+    },
+)
+async def predict_sales(
+    request: SalesPredictionRequest = Body(...)
+) -> SalesPredictionResponse:
     """
     Predict sales using ML model.
 
@@ -278,8 +307,36 @@ async def predict_sales(request: SalesPredictionRequest) -> SalesPredictionRespo
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/optimize", response_model=PricingOptimizationResponse)
-async def optimize_pricing(request: PricingRequest) -> PricingOptimizationResponse:
+# Step 3: Force correct Swagger response example at endpoint level
+@app.post(
+    "/api/optimize",
+    response_model=PricingOptimizationResponse,
+    responses={
+        200: {
+            "description": "Successful Response",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "optimal_price": 104.0,
+                        "expected_sales": 310.0,
+                        "expected_revenue": 32240.0,
+                        "analysis": "Best price is $104.0 for $32240.0 revenue",
+                        "price_curve": [
+                            {"price": 80.0, "predicted_sales": 380.0, "revenue": 30400.0},
+                            {"price": 90.0, "predicted_sales": 350.0, "revenue": 31500.0},
+                            {"price": 100.0, "predicted_sales": 320.0, "revenue": 32000.0},
+                            {"price": 110.0, "predicted_sales": 290.0, "revenue": 31900.0},
+                            {"price": 120.0, "predicted_sales": 260.0, "revenue": 31200.0},
+                        ],
+                    }
+                }
+            },
+        }
+    },
+)
+async def optimize_pricing(
+    request: PricingRequest = Body(...)
+) -> PricingOptimizationResponse:
     """
     Find optimal price for maximum revenue.
     """
