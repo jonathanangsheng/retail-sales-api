@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 from typing import List, Dict
 import pandas as pd
 import numpy as np
@@ -13,6 +13,21 @@ app = FastAPI(
 
 # Data models for validation
 class SalesPredictionRequest(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "examples": [{
+            "price": 100.0,
+            "discount": 0.15,
+            "promotion_intensity": 7.0,
+            "footfall": 500,
+            "ad_spend": 1000.0,
+            "competitor_price": 105.0,
+            "stock_level": 200,
+            "weather_index": 8.0,
+            "customer_sentiment": 7.5,
+            "return_rate": 0.05
+        }]
+    })
+
     price: float = Field(..., gt=0)
     discount: float = Field(..., ge=0, le=1)
     promotion_intensity: float = Field(..., ge=0, le=10)
@@ -23,6 +38,7 @@ class SalesPredictionRequest(BaseModel):
     weather_index: float = Field(..., ge=0, le=10)
     customer_sentiment: float = Field(..., ge=0, le=10)
     return_rate: float = Field(..., ge=0, le=1)
+
 
 class PricingRequest(BaseModel):
     min_price: float = Field(..., gt=0)
