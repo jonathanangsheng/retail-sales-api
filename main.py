@@ -1,10 +1,10 @@
 import os
-import numpy as np
-import pandas as pd
 from typing import List, Optional
 
+import numpy as np
+import pandas as pd
 from fastapi import FastAPI, HTTPException, Body
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 
 from ml_model import predictor
 
@@ -53,12 +53,12 @@ def _ensure_model_loaded():
 
 
 # ----------------------------
-# Request/Response Models
+# Request/Response Models (Pydantic v2)
 # ----------------------------
 
 class FootfallPredictionRequest(BaseModel):
-    class Config:
-        schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "price": 100.0,
                 "discount": 0.15,
@@ -71,6 +71,7 @@ class FootfallPredictionRequest(BaseModel):
                 "return_rate": 0.05,
             }
         }
+    )
 
     price: float = Field(..., gt=0, description="Product price")
     discount: float = Field(..., ge=0, le=1, description="Discount (0 to 1)")
@@ -84,8 +85,8 @@ class FootfallPredictionRequest(BaseModel):
 
 
 class PricingOptimizationRequest(BaseModel):
-    class Config:
-        schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "min_price": 60.0,
                 "max_price": 140.0,
@@ -99,10 +100,12 @@ class PricingOptimizationRequest(BaseModel):
                 "return_rate": 0.05,
             }
         }
+    )
 
     min_price: float = Field(..., gt=0, description="Minimum price to test")
     max_price: float = Field(..., gt=0, description="Maximum price to test")
-    discount: float = Field(0.10, ge=0, le=1)
+
+    discount: float = Field(0.10, ge=0, le=1, description="Fixed discount while sweeping price")
     promotion_intensity: float = Field(5.0, ge=0, le=10)
     ad_spend: float = Field(800.0, ge=0)
     competitor_price: float = Field(100.0, gt=0)
@@ -111,16 +114,24 @@ class PricingOptimizationRequest(BaseModel):
     customer_sentiment: float = Field(7.0, ge=0, le=10)
     return_rate: float = Field(0.05, ge=0, le=1)
 
-    @root_validator
-    def validate_range(cls, values):
-        min_p = values.get("min_price")
-        max_p = values.get("max_price")
-        if min_p is not None and max_p is not None and max_p <= min_p:
+    @model_validator(mode="after")
+    def validate_range(self):
+        if self.max_price <= self.min_price:
             raise ValueError("max_price must be greater than min_price")
-        return values
+        return self
 
 
 class HealthResponse(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "status": "healthy",
+                "model_loaded": True,
+                "model_target": "footfall",
+            }
+        }
+    )
+
     status: str
     model_loaded: bool
     model_target: str
@@ -170,14 +181,14 @@ async def startup_event():
 
     path = _dataset_path()
     if not path:
-        print("❌ Dataset not found. Expected retail_sales.csv (or Retail_Sales.csv) in root or /data")
+        print("Dataset not found. Expected retail_sales.csv (or Retail_Sales.csv) in root or /data")
         return
 
-    print("⚠️  No trained model found. Training new footfall model...")
+    print("No trained model found. Training new footfall model...")
     try:
         predictor.train(csv_path=path)
     except Exception as e:
-        print(f"❌ Training failed: {e}")
+        print(f"Training failed: {e}")
 
 
 # ----------------------------
@@ -191,6 +202,7 @@ async def root():
         "description": "Predict customer footfall and optimize pricing strategies",
         "endpoints": {
             "docs": "/docs",
+            "openapi": "/openapi.json",
             "health": "/api/health",
             "predict_footfall": "/api/predict",
             "optimize_pricing": "/api/optimize",
@@ -205,7 +217,7 @@ async def health():
     return HealthResponse(
         status="healthy",
         model_loaded=predictor.model is not None,
-        model_target=predictor.target,
+        model_target=getattr(predictor, "target", "footfall"),
     )
 
 
@@ -214,6 +226,7 @@ async def health():
     response_model=PredictResponse,
     responses={
         200: {
+            "description": "Successful Response",
             "content": {
                 "application/json": {
                     "example": {
@@ -232,14 +245,15 @@ async def health():
                         "business_insight": "Expect approximately 512 customer visits with current strategy",
                     }
                 }
-            }
+            },
         }
     },
 )
 async def predict_footfall(request: FootfallPredictionRequest = Body(...)):
     _ensure_model_loaded()
+
     try:
-        features = request.dict()
+        features = request.model_dump()
         result = predictor.predict(features)
         importance = predictor.get_feature_importance()
 
@@ -257,6 +271,7 @@ async def predict_footfall(request: FootfallPredictionRequest = Body(...)):
     response_model=OptimizeResponse,
     responses={
         200: {
+            "description": "Successful Response",
             "content": {
                 "application/json": {
                     "example": {
@@ -272,7 +287,7 @@ async def predict_footfall(request: FootfallPredictionRequest = Body(...)):
                         "insight": "Lower prices often increase footfall, but consider profit margins",
                     }
                 }
-            }
+            },
         }
     },
 )
@@ -298,7 +313,10 @@ async def optimize_pricing(request: PricingOptimizationRequest = Body(...)):
             features = {"price": float(p), **fixed}
             pred = predictor.predict(features)
             results.append(
-                {"price": round(float(p), 2), "predicted_footfall": int(pred["predicted_footfall"])}
+                {
+                    "price": round(float(p), 2),
+                    "predicted_footfall": int(pred["predicted_footfall"]),
+                }
             )
 
         optimal = max(results, key=lambda x: x["predicted_footfall"])
@@ -360,7 +378,7 @@ async def model_info():
     _ensure_model_loaded()
     return {
         "model_type": "Random Forest Regressor",
-        "target_variable": predictor.target,
+        "target_variable": getattr(predictor, "target", "footfall"),
         "n_features": len(predictor.feature_names),
         "features": predictor.feature_names,
         "train_r2": predictor.train_score,
