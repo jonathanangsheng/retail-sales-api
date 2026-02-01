@@ -103,6 +103,27 @@ class FeatureFactor(BaseModel):
 
 
 class SalesPredictionResponse(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "prediction": {
+                        "predicted_sales": 320.5,
+                        "confidence_lower": 280.1,
+                        "confidence_upper": 360.9,
+                        "std_dev": 20.2,
+                    },
+                    "top_factors": [
+                        {"feature": "price", "importance": 0.31, "rank": 1},
+                        {"feature": "footfall", "importance": 0.22, "rank": 2},
+                        {"feature": "discount", "importance": 0.12, "rank": 3},
+                    ],
+                    "interpretation": "Expected to sell 320.5 units",
+                }
+            ]
+        }
+    )
+
     prediction: PredictionResult
     top_factors: List[FeatureFactor]
     interpretation: str
@@ -115,6 +136,26 @@ class PriceCurvePoint(BaseModel):
 
 
 class PricingOptimizationResponse(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "optimal_price": 104.0,
+                    "expected_sales": 310.0,
+                    "expected_revenue": 32240.0,
+                    "analysis": "Best price is $104.0 for $32240.0 revenue",
+                    "price_curve": [
+                        {"price": 80.0, "predicted_sales": 380.0, "revenue": 30400.0},
+                        {"price": 90.0, "predicted_sales": 350.0, "revenue": 31500.0},
+                        {"price": 100.0, "predicted_sales": 320.0, "revenue": 32000.0},
+                        {"price": 110.0, "predicted_sales": 290.0, "revenue": 31900.0},
+                        {"price": 120.0, "predicted_sales": 260.0, "revenue": 31200.0},
+                    ],
+                }
+            ]
+        }
+    )
+
     optimal_price: float
     expected_sales: float
     expected_revenue: float
@@ -123,6 +164,12 @@ class PricingOptimizationResponse(BaseModel):
 
 
 class HealthResponse(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [{"status": "healthy", "model_loaded": True}]
+        }
+    )
+
     status: str
     model_loaded: bool
 
@@ -176,11 +223,8 @@ async def startup_event():
         return
 
     try:
-        # IMPORTANT: this assumes you update predictor.train to accept csv_path.
-        # If your predictor.train() does not accept csv_path, see note below.
         predictor.train(csv_path=dataset_path)
     except TypeError:
-        # Backwards-compatible fallback if your train() has no args
         predictor.train()
     except Exception as e:
         print(f"⚠️  Warning: model training failed: {e}")
@@ -208,7 +252,6 @@ async def health() -> HealthResponse:
     return HealthResponse(status="healthy", model_loaded=predictor.model is not None)
 
 
-# OUTPUT 1: Sales Prediction
 @app.post("/api/predict", response_model=SalesPredictionResponse)
 async def predict_sales(request: SalesPredictionRequest) -> SalesPredictionResponse:
     """
@@ -235,7 +278,6 @@ async def predict_sales(request: SalesPredictionRequest) -> SalesPredictionRespo
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# OUTPUT 2: Pricing Optimization
 @app.post("/api/optimize", response_model=PricingOptimizationResponse)
 async def optimize_pricing(request: PricingRequest) -> PricingOptimizationResponse:
     """
