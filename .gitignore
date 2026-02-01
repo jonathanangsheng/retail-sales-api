@@ -1,16 +1,16 @@
 # Python
-   __pycache__/
-   *.pyc
-   *.pyo
-   venv/
-   env/
-   
-   # Models
-   *.joblib
-   
-   # Data
-   *.csv
-   
-   # IDE
-   .vscode/
-   .idea/
+__pycache__/
+*.pyc
+*.pyo
+venv/
+env/
+
+# Models
+*.joblib
+
+# Data
+*.csv
+
+# IDE
+.vscode/
+.idea/
