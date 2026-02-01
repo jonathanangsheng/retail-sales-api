@@ -122,11 +122,9 @@ class PricingOptimizationRequest(BaseModel):
 
 
 class HealthResponse(BaseModel):
-    # IMPORTANT: no schema-level example here
-    # Keeping examples only at endpoint level prevents Swagger from reusing the health example elsewhere.
     status: str
-    model_loaded: bool
-    model_target: str
+    is_model_loaded: bool
+    target_variable: str
 
 
 class FootfallPredictionResult(BaseModel):
@@ -208,8 +206,8 @@ async def root():
 async def health():
     return HealthResponse(
         status="healthy",
-        model_loaded=predictor.model is not None,
-        model_target=getattr(predictor, "target", "footfall"),
+        is_model_loaded=predictor.model is not None,
+        target_variable=getattr(predictor, "target", "footfall"),
     )
 
 
